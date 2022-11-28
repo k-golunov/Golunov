@@ -21,7 +21,7 @@ currency_to_rub = {
     "RUR": 1,
     "UAH": 1.64,
     "USD": 60.66,
-    "UZS": 0.0055,
+    "UZS": 1.25,
 }
 
 
