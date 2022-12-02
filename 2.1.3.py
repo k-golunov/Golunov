@@ -13,6 +13,9 @@ import numpy as np
 from jinja2 import Environment, FileSystemLoader
 import pdfkit
 
+'''
+Словарь для перевода валют
+'''
 currency_to_rub = {
     "AZN": 35.68,
     "BYR": 23.91,
@@ -28,6 +31,14 @@ currency_to_rub = {
 
 
 class Vacancy:
+    '''
+    Класс для представления вакансий
+
+    Attributes:
+        dic (dict) словарь вакансий из csv файла
+        salary (int) зп из csv файла
+        is_needed (string) нужные вакансии из csv файла
+    '''
     def __init__(self, dic: dict):
         self.dic = dic
         self.salary = Salary(dic)
@@ -36,6 +47,16 @@ class Vacancy:
 
 
 class Salary:
+    '''
+    Класс для представленя зарплаты
+
+    Attributes:
+        salary_from (float) нижняя граница вилки оклада
+        salary_to (float) верхняя граница вилки оклада
+        salary_currency (string) Валюта
+        averageSalary (int) средняя зарплата
+        salaryRub (int) средняя зп в рублях
+    '''
     def __init__(self, dic):
         self.salary_from = math.floor(float(dic["salary_from"]))
         self.salary_to = math.floor(float(dic["salary_to"]))
@@ -45,6 +66,13 @@ class Salary:
 
 
 class DataSet:
+    '''
+    Класс для обработки данных из фалйа csv
+
+    Attributes:
+        inputValues (InputConect) входные данные
+
+    '''
     def __init__(self):
         self.inputValues = InputConect()
         self.csv_reader()
@@ -54,6 +82,10 @@ class DataSet:
         self.printGraph()
 
     def csv_reader(self):
+        '''
+        Считывает информацию из файла в переменные
+        :return: void
+        '''
         with open(self.inputValues.fileName, "r", encoding='utf-8-sig', newline='') as csv_file:
             file = csv.reader(csv_file)
             self.firstLine = next(file)
@@ -68,6 +100,11 @@ class DataSet:
         return dic
 
     def csv_filter(self):
+        '''
+        Филтрует информацию, полученную из csv файла в нужный формат
+        Отбирает нужные вакансии, убирает html теги и т.д.
+        :return: void
+        '''
         self.filterVacancies = []
         for line in self.otherLines:
             newDict = dict(zip(self.firstLine, line))
@@ -77,10 +114,21 @@ class DataSet:
         self.necessaryVacancies = list(filter(lambda v: v.is_needed, self.filterVacancies))
 
     def getYears(self):
+        '''
+        Устанавливает поле allYears после филтрации вакансий
+
+        :return: void
+        '''
         self.allYears = list(set([vacancies.dic["year"] for vacancies in self.filterVacancies]))
         self.allYears.sort()
 
     def getAverageSalary(self, count: dict, sum: dict) -> dict:
+        '''
+        получает среднюю зп
+        :param count (dict): словарь с количеством вакансий по годам
+        :param sum (dict): словарь с суммой зп по годам
+        :return: dict
+        '''
         keySalary = {}
         for key, value in count.items():
             if value == 0:
@@ -90,15 +138,34 @@ class DataSet:
         return keySalary
 
     def getSortedDict(self, keySalary: dict):
+        '''
+        Сортирует словарь, обрезает его количество до 10
+        :param keySalary:
+        :return: dict
+        '''
         return dict(list(sorted(keySalary.items(), key=lambda item: item[1], reverse=True))[:10])
 
     def updateKeys(self, keyCount: dict) -> dict:
+        '''
+        Обновление данных в словаре, если этих данных там нет
+
+        :param keyCount: количество вакансий по годам
+        :return:
+        '''
         for key in self.allYears:
             if key not in keyCount.keys():
                 keyCount[key] = 0
         return keyCount
 
     def getKey(self, vacancies: list, key_str: str, isArea: bool) -> (dict, dict):
+        '''
+        Получение данных о зп и кол-ве вакансий по ключу key_str
+
+        :param vacancies: все вакансии
+        :param key_str: ключ для получения данных
+        :param isArea: флаг
+        :return: (dict, dict)
+        '''
         keySum = {}
         keyCount = {}
         for v in vacancies:
@@ -113,6 +180,10 @@ class DataSet:
         return keyAverageSalary, keyCount
 
     def numberGraph(self):
+        '''
+        Устанавливает поля для вывода
+        :return: void
+        '''
         count_vacs = len(self.filterVacancies)
         self.yearSalary, self.year_to_count = \
             self.getKey(self.filterVacancies, "year", False)
@@ -125,6 +196,10 @@ class DataSet:
         self.areaPiece = self.getSortedDict(self.areaPiece)
 
     def printGraph(self):
+        '''
+        Выводит полученную аналитику в консоль
+        :return: void
+        '''
         print("Динамика уровня зарплат по годам:", self.yearSalary)
         print("Динамика количества вакансий по годам:", self.year_to_count)
         print("Динамика уровня зарплат по годам для выбранной профессии:", self.yearSalary_needed)
@@ -137,6 +212,18 @@ class DataSet:
 
 
 class Report:
+    '''
+    Класс для создания отчетов
+
+    Attributes:
+        inputValues (InputConect) входные данные
+        yearSalary (dict) зп по годам
+        yearSalary_needed (dict) зп по  годам для вакансии
+        year_to_count (dict) ваканси по годам
+        yearCount (dict) вакансии по годам для профессии
+        areaSalary (dict) уровень зп по городам
+        areaPiece (dict) доля вакансий по городам
+    '''
     def __init__(self, inputValues, yearSalary, yearSalary_needed, year_to_count, yearCount, areaSalary, areaPiece):
         self.inputValues = inputValues
         self.yearSalary = yearSalary
@@ -153,6 +240,11 @@ class Report:
             self.generate_pdf()
 
     def generate_excel(self):
+        '''
+        Создает файл отчета в экселе
+
+        :return: void
+        '''
         execelFile = Workbook()
         execelSheetFirst = execelFile.create_sheet(title="Статистика по годам", index=0)
         execelSheetFirst['A1'] = 'Год'
@@ -211,6 +303,12 @@ class Report:
         execelFile.save('report.xlsx')
 
     def setSizeColumns(self, excelSheet):
+        '''
+        Устанавливает размер колонок
+
+        :param excelSheet: инстанс листа эксель
+        :return: void
+        '''
         i = 0
         col_width = list()
         for col in excelSheet.columns:
@@ -230,6 +328,14 @@ class Report:
                 excelSheet.column_dimensions[col_letter].width = col_width[i] + 2
 
     def setBorder(self, columns, excelSheet, numberSheet):
+        '''
+        Устанавливает рамки в экселе
+
+        :param columns: колонка в экселе
+        :param excelSheet: инстанс листа в экселе
+        :param numberSheet: номер листа
+        :return: void
+        '''
         side = Side(border_style='thin', color="00000000")
         for i in columns:
             column = excelSheet[i]
@@ -239,6 +345,11 @@ class Report:
                     j.number_format = openpyxl.styles.numbers.BUILTIN_FORMATS[10]
 
     def generate_image(self):
+        '''
+        Создает графики для аналитики c помощью matplotlib
+
+        :return: void
+        '''
         years = [i for i in self.yearSalary.keys()]
         yearSalary = [i for i in self.yearSalary_needed.values()]
         avg = [i for i in self.yearSalary.values()]
@@ -290,6 +401,11 @@ class Report:
         plt.show()
 
     def generate_pdf(self):
+        '''
+        Генерирует пдф отчет
+
+        :return: void
+        '''
         env = Environment(loader=FileSystemLoader('.'))
         template = env.get_template('pdf_template.html')
         heads1 = ['Год', 'Средняя зарплата', f'Средняя зарплата - {self.inputValues.professionName}',
@@ -312,6 +428,14 @@ class Report:
 
 
 class InputConect:
+    '''
+    Класс для получения входных данных и их валидации
+
+    Attributes:
+        fileName (string) имя файла для получения статистики
+        professionName (string) название профессии, по которой нужна статистика
+        TableOrPdf (string) В какои формате нужна статистика
+    '''
     def __init__(self):
         self.fileName = input("Введите название файла: ")
         self.professionName = input("Введите название профессии: ")
@@ -319,6 +443,11 @@ class InputConect:
         self.checkFile()
 
     def checkFile(self):
+        '''
+        Валидация входных полей
+
+        :return: void
+        '''
         with open(self.fileName, "r", encoding='utf-8-sig', newline='') as csv_file:
             file_iter = iter(csv.reader(csv_file))
             if next(file_iter, "none") == "none":
@@ -329,5 +458,7 @@ class InputConect:
                 print("Нет данных")
                 sys.exit()
 
-
+'''
+Start
+'''
 DataSet()
