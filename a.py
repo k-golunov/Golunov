@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from jinja2 import Environment, FileSystemLoader
 import pdfkit
+import doctest
 
 '''
 Словарь для перевода валют
@@ -54,8 +55,15 @@ class Salary:
         salary_from (float) нижняя граница вилки оклада
         salary_to (float) верхняя граница вилки оклада
         salary_currency (string) Валюта
-        averageSalary (int) средняя зарплата
-        salaryRub (int) средняя зп в рублях
+        averageSalary (float) средняя зарплата
+        salaryRub (float) средняя зп в рублях
+
+        >>> type(Salary(dic={"salary_from" : 100, "salary_to" : 200, "salary_currency" : "RUR"})).__name__
+        'Salary'
+        >>> Salary(dic={"salary_from" : 100, "salary_to" : 200, "salary_currency" : "RUR"}).averageSalary
+        150.0
+        >>> Salary(dic={"salary_from" : 100, "salary_to" : 200, "salary_currency" : "EUR"}).salaryRub
+        8985.0
     '''
     def __init__(self, dic):
         self.salary_from = math.floor(float(dic["salary_from"]))
@@ -63,7 +71,6 @@ class Salary:
         self.salary_currency = dic["salary_currency"]
         self.averageSalary = (self.salary_to + self.salary_from) / 2
         self.salaryRub = currency_to_rub[self.salary_currency] * self.averageSalary
-
 
 class DataSet:
     '''
@@ -74,12 +81,15 @@ class DataSet:
 
     '''
     def __init__(self):
+        '''
+
+        '''
         self.inputValues = InputConect()
         self.csv_reader()
         self.csv_filter()
         self.getYears()
         self.numberGraph()
-        self.printGraph()
+        # self.printGraph()
 
     def csv_reader(self):
         '''
@@ -93,6 +103,19 @@ class DataSet:
                                if not ("" in line) and len(line) == len(self.firstLine)]
 
     def tryToAdd(self, dic: dict, key, val) -> dict:
+        '''
+        Увеличивает значение по ключу, если значение есть, если нет, то добавляет запись в словарь
+
+        :param dic: входной словарь
+        :param key: ключ, которому добовляем значение
+        :param val: самое значение
+        :return: dict
+
+        >>> DataSet().tryToAdd(dic={'1' : 1}, key='1', val=1)
+        {'1': 2}
+        >>> DataSet().tryToAdd(dic={'1' : 1}, key='2', val=2)
+        {'1': 1, '2': 2}
+        '''
         try:
             dic[key] += val
         except:
@@ -103,6 +126,7 @@ class DataSet:
         '''
         Филтрует информацию, полученную из csv файла в нужный формат
         Отбирает нужные вакансии, убирает html теги и т.д.
+
         :return: void
         '''
         self.filterVacancies = []
@@ -125,9 +149,13 @@ class DataSet:
     def getAverageSalary(self, count: dict, sum: dict) -> dict:
         '''
         получает среднюю зп
+
         :param count (dict): словарь с количеством вакансий по годам
         :param sum (dict): словарь с суммой зп по годам
         :return: dict
+
+        >>> DataSet().getAverageSalary(count={'2007' : 2}, sum={'2007' : 10})
+        {'2007': 5}
         '''
         keySalary = {}
         for key, value in count.items():
@@ -140,8 +168,12 @@ class DataSet:
     def getSortedDict(self, keySalary: dict):
         '''
         Сортирует словарь, обрезает его количество до 10
+
         :param keySalary:
         :return: dict
+
+        >>> len(DataSet().getSortedDict(keySalary={'1': 1, '2' : 2, '3' : 3, '4' : 4, '5' : 5, '6' : 6, '7' : 7, '8' : 8, '9' : 9, '10' : 10, '11' : 11, '12' : 12}))
+        10
         '''
         return dict(list(sorted(keySalary.items(), key=lambda item: item[1], reverse=True))[:10])
 
@@ -150,7 +182,12 @@ class DataSet:
         Обновление данных в словаре, если этих данных там нет
 
         :param keyCount: количество вакансий по годам
-        :return:
+        :return: dict
+
+        >>> DataSet().updateKeys(keyCount={'2022' : 1000})
+        {'2022': 1000, 2007: 0, 2008: 0, 2009: 0, 2010: 0, 2011: 0, 2012: 0, 2013: 0, 2014: 0, 2015: 0, 2016: 0, 2017: 0, 2018: 0, 2019: 0, 2020: 0, 2021: 0, 2022: 0}
+        >>> DataSet().updateKeys(keyCount={'2023' : 1000})
+        {'2023': 1000, 2007: 0, 2008: 0, 2009: 0, 2010: 0, 2011: 0, 2012: 0, 2013: 0, 2014: 0, 2015: 0, 2016: 0, 2017: 0, 2018: 0, 2019: 0, 2020: 0, 2021: 0, 2022: 0}
         '''
         for key in self.allYears:
             if key not in keyCount.keys():
@@ -182,6 +219,7 @@ class DataSet:
     def numberGraph(self):
         '''
         Устанавливает поля для вывода
+
         :return: void
         '''
         count_vacs = len(self.filterVacancies)
@@ -437,10 +475,14 @@ class InputConect:
         TableOrPdf (string) В какои формате нужна статистика
     '''
     def __init__(self):
-        self.fileName = input("Введите название файла: ")
-        self.professionName = input("Введите название профессии: ")
-        self.TableOrPdf = input("Вакансии или Статистика: ")
+        self.fileName = 'vacancies_by_year.csv'
+        self.professionName = 'Аналитик'
+        self.TableOrPdf = 'Вакансии'
         self.checkFile()
+        # self.fileName = input("Введите название файла: ")
+        # self.professionName = input("Введите название профессии: ")
+        # self.TableOrPdf = input("Вакансии или Статистика: ")
+        # self.checkFile()
 
     def checkFile(self):
         '''
@@ -461,4 +503,7 @@ class InputConect:
 '''
 Start
 '''
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
 DataSet()
